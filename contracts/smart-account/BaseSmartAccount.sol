@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.17;
 
-/* solhint-disable avoid-low-level-calls */
-/* solhint-disable no-inline-assembly */
-/* solhint-disable reason-string */
-
-import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {UserOperationLib, UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {IAccount} from "@vechain/account-abstraction-contracts/interfaces/IAccount.sol";
+import {IEntryPoint} from "@vechain/account-abstraction-contracts/interfaces/IEntryPoint.sol";
+import {UserOperationLib, UserOperation} from "@vechain/account-abstraction-contracts/interfaces/UserOperation.sol";
 import {BaseSmartAccountErrors} from "./common/Errors.sol";
-import "@account-abstraction/contracts/core/Helpers.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * Basic account implementation.
@@ -17,25 +13,27 @@ import "@account-abstraction/contracts/core/Helpers.sol";
  * Specific account implementation should inherit it and provide the account-specific logic
  */
 abstract contract BaseSmartAccount is IAccount, BaseSmartAccountErrors {
+    // VTHO Token Information
+    address public constant VTHO_TOKEN_ADDRESS = 0x0000000000000000000000000000456E65726779;
+    IERC20 public constant VTHO_TOKEN_CONTRACT = IERC20(VTHO_TOKEN_ADDRESS);
+
     using UserOperationLib for UserOperation;
 
-    //return value in case of signature failure, with no time-range.
+    // Return value in case of signature failure, with no time-range.
     // equivalent to _packValidationData(true,0,0);
     uint256 internal constant SIG_VALIDATION_FAILED = 1;
 
     /**
-     * @dev Initialize the Smart Account with required states
-     * @param handler Default fallback handler provided in Smart Account
-     * @param moduleSetupContract Contract, that setups initial auth module for this smart account. It can be a module factory or
-     *                            a registry module that serves several smart accounts.
-     * @param moduleSetupData data containing address of the Setup Contract and a setup data
-     * @notice devs need to make sure it is only callable once (use initializer modifier or state check restrictions)
+     * @dev Initialize the Smart Account with required states.
+     * @param handler Default fallback handler for the Smart Account.
+     * @param moduleSetupContract Initializes the auth module; can be a factory or registry for multiple accounts.
+     * @param moduleSetupData Contains address of the Setup Contract and setup data.
+     * @notice Ensure this is callable only once (use initializer modifier or state checks).
      */
-    function init(
-        address handler,
-        address moduleSetupContract,
-        bytes calldata moduleSetupData
-    ) external virtual returns (address);
+    function init(address handler, address moduleSetupContract, bytes calldata moduleSetupData)
+        external
+        virtual
+        returns (address);
 
     /**
      * Validates the userOp.
@@ -48,14 +46,14 @@ abstract contract BaseSmartAccount is IAccount, BaseSmartAccountErrors {
      *         otherwise, an address of an "authorizer" contract.
      *      <6-byte> validUntil - last timestamp this operation is valid. 0 for "indefinite"
      *      <6-byte> validAfter - first timestamp this operation is valid
-     *      If the account doesn't use time-range, it is enough to return SIG_VALIDATION_FAILED value (1) for signature failure.
+     *      If no time-range in account, return SIG_VALIDATION_FAILED (1) for signature failure.
      *      Note that the validation code cannot use block.timestamp (or block.number) directly.
      */
-    function validateUserOp(
-        UserOperation calldata userOp,
-        bytes32 userOpHash,
-        uint256 missingAccountFunds
-    ) external virtual override returns (uint256);
+    function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
+        external
+        virtual
+        override
+        returns (uint256);
 
     /**
      * @return nonce the account nonce.
@@ -73,20 +71,18 @@ abstract contract BaseSmartAccount is IAccount, BaseSmartAccountErrors {
     function entryPoint() public view virtual returns (IEntryPoint);
 
     /**
-     * sends to the entrypoint (msg.sender) the missing funds for this transaction.
-     * subclass MAY override this method for better funds management
-     * (e.g. send to the entryPoint more than the minimum required, so that in future transactions
-     * it will not be required to send again)
-     * @param missingAccountFunds the minimum value this method should send the entrypoint.
-     *  this value MAY be zero, in case there is enough deposit, or the userOp has a paymaster.
+     * Should send to the entrypoint (msg.sender) the missing funds for this transaction.
+     * Since we cannot transfer prefund with VTHO (bundler debugTraceCall restrictions), we do nothing instead.
+     * SubClass MAY override this method for better funds management
      */
     function _payPrefund(uint256 missingAccountFunds) internal virtual {
         if (missingAccountFunds != 0) {
-            payable(msg.sender).call{
-                value: missingAccountFunds,
-                gas: type(uint256).max
-            }("");
-            //ignore failure (its EntryPoint's job to verify, not account.)
+            // Approve EP to pull these tokens
+            require(
+                VTHO_TOKEN_CONTRACT.approve(address(entryPoint()), missingAccountFunds), "Approval to EntryPoint Failed"
+            );
+            // Deposit specified amount to EP for SA
+            entryPoint().depositAmountTo(address(this), missingAccountFunds);
         }
     }
 }

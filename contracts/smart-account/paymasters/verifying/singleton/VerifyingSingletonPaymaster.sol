@@ -1,14 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0
 pragma solidity 0.8.17;
 
-/* solhint-disable reason-string */
-/* solhint-disable no-inline-assembly */
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {UserOperation, UserOperationLib} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {UserOperation, UserOperationLib} from "@vechain/account-abstraction-contracts/interfaces/UserOperation.sol";
 import "../../BasePaymaster.sol";
 import {PaymasterHelpers, PaymasterData, PaymasterContext} from "../../PaymasterHelpers.sol";
 import {SingletonPaymasterErrors} from "../../../common/Errors.sol";
+import {_packValidationData} from "@vechain/account-abstraction-contracts/core/Helpers.sol";
 
 /**
  * @title A sample paymaster that uses external service to decide whether to pay for the UserOp.
@@ -19,11 +18,7 @@ import {SingletonPaymasterErrors} from "../../../common/Errors.sol";
  *  - The paymaster signs to agree to PAY for GAS.
  *  - The wallet signs to prove identity and wallet ownership.
  */
-contract VerifyingSingletonPaymaster is
-    BasePaymaster,
-    ReentrancyGuard,
-    SingletonPaymasterErrors
-{
+contract VerifyingSingletonPaymaster is BasePaymaster, ReentrancyGuard, SingletonPaymasterErrors {
     using ECDSA for bytes32;
     using UserOperationLib for UserOperation;
     using PaymasterHelpers for UserOperation;
@@ -36,53 +31,43 @@ contract VerifyingSingletonPaymaster is
 
     address public verifyingSigner;
 
-    event EPGasOverheadChanged(
-        uint256 indexed _oldValue,
-        uint256 indexed _newValue
-    );
+    event EPGasOverheadChanged(uint256 indexed _oldValue, uint256 indexed _newValue);
 
-    event VerifyingSignerChanged(
-        address indexed _oldSigner,
-        address indexed _newSigner,
-        address indexed _actor
-    );
+    event VerifyingSignerChanged(address indexed _oldSigner, address indexed _newSigner, address indexed _actor);
     event GasDeposited(address indexed _paymasterId, uint256 indexed _value);
-    event GasWithdrawn(
-        address indexed _paymasterId,
-        address indexed _to,
-        uint256 indexed _value
-    );
-    event GasBalanceDeducted(
-        address indexed _paymasterId,
-        uint256 indexed _charge
-    );
+    event GasWithdrawn(address indexed _paymasterId, address indexed _to, uint256 indexed _value);
+    event GasBalanceDeducted(address indexed _paymasterId, uint256 indexed _charge);
 
-    constructor(
-        address _owner,
-        IEntryPoint _entryPoint,
-        address _verifyingSigner
-    ) payable BasePaymaster(_owner, _entryPoint) {
+    constructor(address _owner, IEntryPoint _entryPoint, address _verifyingSigner)
+        payable
+        BasePaymaster(_owner, _entryPoint)
+    {
         if (address(_entryPoint) == address(0)) revert EntryPointCannotBeZero();
-        if (_verifyingSigner == address(0))
+        if (_verifyingSigner == address(0)) {
             revert VerifyingSignerCannotBeZero();
+        }
         assembly {
             sstore(verifyingSigner.slot, _verifyingSigner)
         }
+        // Subject to change because VeChain's EP enforces a penalty
         _unaccountedEPGasOverhead = 9600;
     }
 
     /**
-     * @dev Add a deposit for this paymaster and given paymasterId (Dapp Depositor address), used for paying for transaction fees
-     * @param paymasterId dapp identifier for which deposit is being made
+     * @dev Deposit funds for a given paymasterId to cover transaction fees.
+     * @param paymasterId Identifier of the dapp receiving the deposit.
+     * @param amount The amount of VTHO to deposit for paymasterId
      */
-    function depositFor(address paymasterId) external payable nonReentrant {
+    function depositFor(address paymasterId, uint256 amount) external /* nonReentrant */ {
         if (paymasterId == address(0)) revert PaymasterIdCannotBeZero();
-        if (msg.value == 0) revert DepositCanNotBeZero();
-        paymasterIdBalances[paymasterId] =
-            paymasterIdBalances[paymasterId] +
-            msg.value;
-        entryPoint.depositTo{value: msg.value}(address(this));
-        emit GasDeposited(paymasterId, msg.value);
+        if (amount == 0) revert DepositCanNotBeZero();
+        require(
+            VTHO_TOKEN_CONTRACT.transferFrom(msg.sender, address(this), amount), "Paymaster deposit transfer failed"
+        );
+        paymasterIdBalances[paymasterId] = paymasterIdBalances[paymasterId] + amount;
+        require(VTHO_TOKEN_CONTRACT.approve(address(ENTRY_POINT), amount), "Paymaster deposit approval failed");
+        ENTRY_POINT.depositAmountTo(address(this), amount);
+        emit GasDeposited(paymasterId, amount);
     }
 
     /**
@@ -93,8 +78,9 @@ contract VerifyingSingletonPaymaster is
      * After setting the new signer address, it will emit an event VerifyingSignerChanged.
      */
     function setSigner(address _newVerifyingSigner) external payable onlyOwner {
-        if (_newVerifyingSigner == address(0))
+        if (_newVerifyingSigner == address(0)) {
             revert VerifyingSignerCannotBeZero();
+        }
         address oldSigner = verifyingSigner;
         assembly {
             sstore(verifyingSigner.slot, _newVerifyingSigner)
@@ -112,73 +98,63 @@ contract VerifyingSingletonPaymaster is
      * @dev get the current deposit for paymasterId (Dapp Depositor address)
      * @param paymasterId dapp identifier
      */
-    function getBalance(
-        address paymasterId
-    ) external view returns (uint256 balance) {
+    function getBalance(address paymasterId) external view returns (uint256 balance) {
         balance = paymasterIdBalances[paymasterId];
     }
 
     /**
-     @dev Override the default implementation.
+     * @dev Override the default implementation.
      */
     function deposit() public payable virtual override {
         revert("user DepositFor instead");
     }
 
     /**
-     * @dev Withdraws the specified amount of gas tokens from the paymaster's balance and transfers them to the specified address.
-     * @param withdrawAddress The address to which the gas tokens should be transferred.
-     * @param amount The amount of gas tokens to withdraw.
+     * @dev Withdraws specified gas tokens from paymaster's balance to a given address.
+     * @param withdrawAddress Address receiving the gas tokens.
+     * @param amount Amount of gas tokens to withdraw.
      */
-    function withdrawTo(
-        address payable withdrawAddress,
-        uint256 amount
-    ) public override nonReentrant {
+    function withdrawTo(address payable withdrawAddress, uint256 amount) public override nonReentrant {
         if (withdrawAddress == address(0)) revert CanNotWithdrawToZeroAddress();
         uint256 currentBalance = paymasterIdBalances[msg.sender];
-        if (amount > currentBalance)
+        if (amount > currentBalance) {
             revert InsufficientBalance(amount, currentBalance);
-        paymasterIdBalances[msg.sender] =
-            paymasterIdBalances[msg.sender] -
-            amount;
-        entryPoint.withdrawTo(withdrawAddress, amount);
+        }
+        paymasterIdBalances[msg.sender] = paymasterIdBalances[msg.sender] - amount;
+        ENTRY_POINT.withdrawTo(withdrawAddress, amount);
         emit GasWithdrawn(msg.sender, withdrawAddress, amount);
     }
 
     /**
-     * @dev This method is called by the off-chain service, to sign the request.
-     * It is called on-chain from the validatePaymasterUserOp, to validate the signature.
-     * @notice That this signature covers all fields of the UserOperation, except the "paymasterAndData",
-     * which will carry the signature itself.
-     * @return hash we're going to sign off-chain (and validate on-chain)
+     * @dev Called by off-chain service for signing, and on-chain in validatePaymasterUserOp for validation.
+     * @notice Signature covers all UserOperation fields except "paymasterAndData" which carries the signature.
+     * @return Hash to sign off-chain and validate on-chain.
      */
-    function getHash(
-        UserOperation calldata userOp,
-        address paymasterId,
-        uint48 validUntil,
-        uint48 validAfter
-    ) public view returns (bytes32) {
-        //can't use userOp.hash(), since it contains also the paymasterAndData itself.
+    function getHash(UserOperation calldata userOp, address paymasterId, uint48 validUntil, uint48 validAfter)
+        public
+        view
+        returns (bytes32)
+    {
+        // can't use userOp.hash(), since it contains also the paymasterAndData itself.
         address sender = userOp.getSender();
-        return
-            keccak256(
-                abi.encode(
-                    sender,
-                    userOp.nonce,
-                    keccak256(userOp.initCode),
-                    keccak256(userOp.callData),
-                    userOp.callGasLimit,
-                    userOp.verificationGasLimit,
-                    userOp.preVerificationGas,
-                    userOp.maxFeePerGas,
-                    userOp.maxPriorityFeePerGas,
-                    block.chainid,
-                    address(this),
-                    paymasterId,
-                    validUntil,
-                    validAfter
-                )
-            );
+        return keccak256(
+            abi.encode(
+                sender,
+                userOp.nonce,
+                keccak256(userOp.initCode),
+                keccak256(userOp.callData),
+                userOp.callGasLimit,
+                userOp.verificationGasLimit,
+                userOp.preVerificationGas,
+                userOp.maxFeePerGas,
+                userOp.maxPriorityFeePerGas,
+                block.chainid,
+                address(this),
+                paymasterId,
+                validUntil,
+                validAfter
+            )
+        );
     }
 
     /**
@@ -187,20 +163,12 @@ contract VerifyingSingletonPaymaster is
      * @param context payment conditions signed by the paymaster in `validatePaymasterUserOp`
      * @param actualGasCost amount to be paid to the entry point in wei
      */
-    function _postOp(
-        PostOpMode mode,
-        bytes calldata context,
-        uint256 actualGasCost
-    ) internal virtual override {
+    function _postOp(PostOpMode mode, bytes calldata context, uint256 actualGasCost) internal virtual override {
         (mode);
         PaymasterContext memory data = context.decodePaymasterContext();
         address extractedPaymasterId = data.paymasterId;
-        uint256 balToDeduct = actualGasCost +
-            _unaccountedEPGasOverhead *
-            tx.gasprice;
-        paymasterIdBalances[extractedPaymasterId] =
-            paymasterIdBalances[extractedPaymasterId] -
-            balToDeduct;
+        uint256 balToDeduct = actualGasCost + _unaccountedEPGasOverhead * tx.gasprice;
+        paymasterIdBalances[extractedPaymasterId] = paymasterIdBalances[extractedPaymasterId] - balToDeduct;
         emit GasBalanceDeducted(extractedPaymasterId, balToDeduct);
     }
 
@@ -215,51 +183,27 @@ contract VerifyingSingletonPaymaster is
      */
     function _validatePaymasterUserOp(
         UserOperation calldata userOp,
-        bytes32 /*userOpHash*/,
+        bytes32,
+        /*userOpHash*/
         uint256 requiredPreFund
-    )
-        internal
-        view
-        override
-        returns (bytes memory context, uint256 validationData)
-    {
+    ) internal view override returns (bytes memory context, uint256 validationData) {
         PaymasterData memory paymasterData = userOp.decodePaymasterData();
-        bytes32 hash = getHash(
-            userOp,
-            paymasterData.paymasterId,
-            paymasterData.validUntil,
-            paymasterData.validAfter
-        );
+        bytes32 hash = getHash(userOp, paymasterData.paymasterId, paymasterData.validUntil, paymasterData.validAfter);
         uint256 sigLength = paymasterData.signatureLength;
-        // we only "require" it here so that the revert reason on invalid signature will be of "VerifyingPaymaster", and not "ECDSA"
+        // Ensure revert reason is from "VerifyingPaymaster" not "ECDSA" on invalid signature.
+
         if (sigLength != 65) revert InvalidPaymasterSignatureLength(sigLength);
-        //don't revert on signature failure: return SIG_VALIDATION_FAILED
-        if (
-            verifyingSigner !=
-            hash.toEthSignedMessageHash().recover(paymasterData.signature)
-        ) {
-            // empty context and sigFailed with time range provided
-            return (
-                "",
-                _packValidationData(
-                    true,
-                    paymasterData.validUntil,
-                    paymasterData.validAfter
-                )
-            );
+        // Don't revert on signature failure: return SIG_VALIDATION_FAILED.
+        if (verifyingSigner != hash.toEthSignedMessageHash().recover(paymasterData.signature)) {
+            // Empty context and sigFailed with time range provided
+            return ("", _packValidationData(true, paymasterData.validUntil, paymasterData.validAfter));
         }
-        if (requiredPreFund > paymasterIdBalances[paymasterData.paymasterId])
-            revert InsufficientBalance(
-                requiredPreFund,
-                paymasterIdBalances[paymasterData.paymasterId]
-            );
+        if (requiredPreFund > paymasterIdBalances[paymasterData.paymasterId]) {
+            revert InsufficientBalance(requiredPreFund, paymasterIdBalances[paymasterData.paymasterId]);
+        }
         return (
-            userOp.paymasterContext(paymasterData),
-            _packValidationData(
-                false,
-                paymasterData.validUntil,
-                paymasterData.validAfter
-            )
+            PaymasterHelpers.paymasterContext(paymasterData),
+            _packValidationData(false, paymasterData.validUntil, paymasterData.validAfter)
         );
     }
 }

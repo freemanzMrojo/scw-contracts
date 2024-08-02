@@ -5,12 +5,12 @@ pragma solidity 0.8.17;
 /* solhint-disable no-inline-assembly */
 /* solhint-disable reason-string */
 
-import {IAccount} from "@account-abstraction/contracts/interfaces/IAccount.sol";
-import {IEntryPoint} from "@account-abstraction/contracts/interfaces/IEntryPoint.sol";
-import {UserOperationLib, UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {IAccount} from "@vechain/account-abstraction-contracts/interfaces/IAccount.sol";
+import {IEntryPoint} from "@vechain/account-abstraction-contracts/interfaces/IEntryPoint.sol";
+import {UserOperationLib, UserOperation} from "@vechain/account-abstraction-contracts/interfaces/UserOperation.sol";
 import {Enum} from "../../../common/Enum.sol";
 import {BaseSmartAccountErrorsV1} from "./ErrorsV1.sol";
-import "@account-abstraction/contracts/core/Helpers.sol";
+import "@vechain/account-abstraction-contracts/core/Helpers.sol";
 
 struct Transaction {
     address to;

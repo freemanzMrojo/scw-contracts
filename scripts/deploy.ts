@@ -25,7 +25,7 @@ import {
   SmartAccount__factory,
   SmartContractOwnershipRegistryModule__factory,
 } from "../typechain";
-import { EntryPoint__factory } from "@account-abstraction/contracts";
+import { EntryPoint__factory } from "@vechain/account-abstraction-contracts";
 import { formatEther, isAddress } from "ethers/lib/utils";
 // import { AccountRecoveryModule__factory } from "../typechain-types";
 
