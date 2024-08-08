@@ -9,6 +9,7 @@ import {UserOperation, UserOperationLib} from "@vechain/account-abstraction-cont
 import "../../BasePaymaster.sol";
 import {PaymasterHelpers, PaymasterData, PaymasterContext} from "../../PaymasterHelpers.sol";
 import {SingletonPaymasterErrors} from "../../../common/Errors.sol";
+import {_packValidationData} from "@vechain/account-abstraction-contracts/core/Helpers.sol";
 
 /**
  * @title A sample paymaster that uses external service to decide whether to pay for the UserOp.

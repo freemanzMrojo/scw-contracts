@@ -8,6 +8,7 @@ import {IPaymaster} from "@vechain/account-abstraction-contracts/interfaces/IPay
 import {IEntryPoint} from "@vechain/account-abstraction-contracts/interfaces/IEntryPoint.sol";
 import {UserOperation} from "@vechain/account-abstraction-contracts/interfaces/UserOperation.sol";
 import {BaseSmartAccountErrors} from "../common/Errors.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /**
  * Helper class for creating a paymaster.
  * provides helper methods for staking.

@@ -10,6 +10,7 @@ import {IEntryPoint} from "@vechain/account-abstraction-contracts/interfaces/IEn
 import {UserOperationLib, UserOperation} from "@vechain/account-abstraction-contracts/interfaces/UserOperation.sol";
 import {BaseSmartAccountErrors} from "./common/Errors.sol";
 import "@vechain/account-abstraction-contracts/core/Helpers.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * Basic account implementation.

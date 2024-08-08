@@ -1,18 +1,17 @@
 import * as dotenv from "dotenv";
 
-import { HardhatUserConfig, task } from "hardhat/config";
+import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
 import "@typechain/hardhat";
-import "hardhat-gas-reporter";
-import "solidity-coverage";
-import "hardhat-deploy";
-import "@nomiclabs/hardhat-ethers";
+import '@vechain/hardhat-ethers';
+import { VECHAIN_URL_SOLO } from '@vechain/hardhat-vechain';
 import "hardhat-dependency-compiler";
-import { parseUnits } from "ethers/lib/utils";
-import '@vechain/sdk-hardhat-plugin';
-import { VET_DERIVATION_PATH } from '@vechain/sdk-core';
+import "hardhat-deploy";
+import "hardhat-gas-reporter";
+import { HardhatUserConfig, task } from "hardhat/config";
 import { type HttpNetworkConfig } from 'hardhat/types';
+import "solidity-coverage";
 
 const walletUtils = require("./walletUtils");
 
@@ -65,6 +64,9 @@ const config: HardhatUserConfig = {
     ]
   },
   networks: {
+    vechain_solo: {
+      url: VECHAIN_URL_SOLO,
+    },
     vechain_testnet: {
       // Testnet
       url: 'https://testnet.vechain.org',
