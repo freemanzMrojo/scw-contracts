@@ -7,11 +7,6 @@
   resolved "https://registry.yarnpkg.com/@aashutoshrathi/word-wrap/-/word-wrap-1.2.6.tgz#bd9154aec9983f77b3a034ecaa015c2e4201f6cf"
   integrity sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==
 
-"@account-abstraction/contracts@^0.6.0":
-  version "0.6.0"
-  resolved "https://registry.npmjs.org/@account-abstraction/contracts/-/contracts-0.6.0.tgz"
-  integrity sha512-8ooRJuR7XzohMDM4MV34I12Ci2bmxfE9+cixakRL7lA4BAwJKQ3ahvd8FbJa9kiwkUPCUNtj+/zxDQWYYalLMQ==
-
 "@babel/code-frame@7.12.11", "@babel/code-frame@^7.0.0":
   version "7.12.11"
   resolved "https://registry.npmjs.org/@babel/code-frame/-/code-frame-7.12.11.tgz"
@@ -1496,6 +1491,11 @@
   dependencies:
     "@typescript-eslint/types" "4.33.0"
     eslint-visitor-keys "^2.0.0"
+
+"@vechain/account-abstraction-contracts@^0.6.0":
+  version "0.6.0"
+  resolved "https://registry.yarnpkg.com/@vechain/account-abstraction-contracts/-/account-abstraction-contracts-0.6.0.tgz#5b0fb12e8d551e71dea91c376168f73bffd45e7e"
+  integrity sha512-zyPH0PtVy/ZuEW1aW/hkBuwKMUuTTtEU+emF/Rpvju3XVS+HkMawKqpMA86GwsDJ2OZX0pnc5dRP8sy8DXjpcQ==
 
 abbrev@1, abbrev@1.0.x:
   version "1.0.9"

@@ -3,7 +3,7 @@ pragma solidity 0.8.17;
 
 import {BaseAuthorizationModule} from "../BaseAuthorizationModule.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {UserOperation} from "@vechain/account-abstraction-contracts/interfaces/UserOperation.sol";
 
 /**
  * @title ECDSA ownership Authorization module for Biconomy Smart Accounts.

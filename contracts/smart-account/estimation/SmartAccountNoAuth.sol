@@ -287,9 +287,15 @@ contract SmartAccountNoAuth is
 
     /**
      * @dev Deposit more funds for this account in the entryPoint
+     * @param amount Amount of VTHO to approve for use by the entryPoint
      */
-    function addDeposit() public payable {
-        entryPoint().depositTo{value: msg.value}(address(this));
+    function addDeposit(uint256 amount) public {
+        // Transfer tokens from invoker to SA
+        require(VTHO_TOKEN_CONTRACT.transferFrom(msg.sender, SELF, amount), "Amount to deposit exceeds SA's allowance");
+        // Approve EP to pull these tokens
+        require(VTHO_TOKEN_CONTRACT.approve(address(entryPoint()), amount), "Approval to EntryPoint Failed");
+        // Deposit specified amount to EP for SA
+        entryPoint().depositAmountTo(address(this), amount);
     }
 
     /**

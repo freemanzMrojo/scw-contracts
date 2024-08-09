@@ -274,7 +274,7 @@ const config: HardhatUserConfig = {
   },
 
   dependencyCompiler: {
-    paths: ["@account-abstraction/contracts/core/EntryPoint.sol"],
+    paths: ["@vechain/account-abstraction-contracts/core/EntryPoint.sol"],
   },
   etherscan: {
     apiKey: {

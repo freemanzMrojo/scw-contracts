@@ -2,7 +2,7 @@
 pragma solidity 0.8.17;
 
 import {BaseAuthorizationModule} from "../../modules/BaseAuthorizationModule.sol";
-import {UserOperation} from "@account-abstraction/contracts/interfaces/UserOperation.sol";
+import {UserOperation} from "@vechain/account-abstraction-contracts/interfaces/UserOperation.sol";
 
 contract MockInvalidInitialAuthModule is BaseAuthorizationModule {
     mapping(address => bytes) internal _setupData;

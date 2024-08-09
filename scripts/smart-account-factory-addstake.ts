@@ -1,7 +1,7 @@
 import { ethers } from "hardhat";
 import { SmartAccountFactory__factory } from "../typechain";
 import { factoryStakeConfig, isContract } from "./utils";
-import { EntryPoint__factory } from "@account-abstraction/contracts";
+import { EntryPoint__factory } from "@vechain/account-abstraction-contracts";
 import { formatEther } from "ethers/lib/utils";
 
 const entryPointAddress =
