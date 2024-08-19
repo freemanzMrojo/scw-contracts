@@ -13,14 +13,6 @@ contract Stakeable is Ownable {
         _transferOwnership(_newOwner);
     }
 
-    function addStake(
-        address epAddress,
-        uint32 unstakeDelaySec
-    ) external payable onlyOwner {
-        require(epAddress != address(0), "Invalid EP address");
-        IEntryPoint(epAddress).addStake{value: msg.value}(unstakeDelaySec);
-    }
-
     function unlockStake(address epAddress) external onlyOwner {
         require(epAddress != address(0), "Invalid EP address");
         IEntryPoint(epAddress).unlockStake();

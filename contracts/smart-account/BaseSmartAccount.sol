@@ -19,7 +19,8 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
  */
 abstract contract BaseSmartAccount is IAccount, BaseSmartAccountErrors {
     // VTHO Token Information
-    address public constant VTHO_TOKEN_ADDRESS = 0x0000000000000000000000000000456E65726779;
+    address public constant VTHO_TOKEN_ADDRESS =
+        0x0000000000000000000000000000456E65726779;
     IERC20 public constant VTHO_TOKEN_CONTRACT = IERC20(VTHO_TOKEN_ADDRESS);
 
     using UserOperationLib for UserOperation;
@@ -36,10 +37,11 @@ abstract contract BaseSmartAccount is IAccount, BaseSmartAccountErrors {
      * @param moduleSetupData data containing address of the Setup Contract and a setup data
      * @notice devs need to make sure it is only callable once (use initializer modifier or state check restrictions)
      */
-    function init(address handler, address moduleSetupContract, bytes calldata moduleSetupData)
-        external
-        virtual
-        returns (address);
+    function init(
+        address handler,
+        address moduleSetupContract,
+        bytes calldata moduleSetupData
+    ) external virtual returns (address);
 
     /**
      * Validates the userOp.
@@ -55,11 +57,11 @@ abstract contract BaseSmartAccount is IAccount, BaseSmartAccountErrors {
      *      If the account doesn't use time-range, it is enough to return SIG_VALIDATION_FAILED value (1) for signature failure.
      *      Note that the validation code cannot use block.timestamp (or block.number) directly.
      */
-    function validateUserOp(UserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds)
-        external
-        virtual
-        override
-        returns (uint256);
+    function validateUserOp(
+        UserOperation calldata userOp,
+        bytes32 userOpHash,
+        uint256 missingAccountFunds
+    ) external virtual override returns (uint256);
 
     /**
      * @return nonce the account nonce.
@@ -85,7 +87,11 @@ abstract contract BaseSmartAccount is IAccount, BaseSmartAccountErrors {
         if (missingAccountFunds != 0) {
             // Approve EP to pull these tokens
             require(
-                VTHO_TOKEN_CONTRACT.approve(address(entryPoint()), missingAccountFunds), "Approval to EntryPoint Failed"
+                VTHO_TOKEN_CONTRACT.approve(
+                    address(entryPoint()),
+                    missingAccountFunds
+                ),
+                "Approval to EntryPoint Failed"
             );
             // Deposit specified amount to EP for SA
             entryPoint().depositAmountTo(address(this), missingAccountFunds);
